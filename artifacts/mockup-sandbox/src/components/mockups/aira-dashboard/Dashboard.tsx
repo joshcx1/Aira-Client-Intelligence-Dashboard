@@ -16,9 +16,14 @@ import {
   LineChart,
   MessageCircle,
   MoreHorizontal,
+  Pause,
+  PhoneCall,
+  Play,
   Send,
   Settings2,
   ShieldCheck,
+  SkipBack,
+  SkipForward,
   Sparkles,
   X,
 } from "lucide-react";
@@ -34,8 +39,86 @@ const ranges: Record<RangeKey, string> = {
 const navItems = [
   { label: "Overview", icon: LayoutDashboard },
   { label: "Conversations", icon: MessageCircle },
+  { label: "Call logs", icon: PhoneCall },
   { label: "Appointments", icon: CalendarDays },
   { label: "Aira performance", icon: Sparkles },
+];
+
+type CallRecord = {
+  id: string;
+  caller: string;
+  initials: string;
+  context: string;
+  time: string;
+  duration: string;
+  status: string;
+  statusTone: "resolved" | "escalated";
+  intent: string;
+  summary: string;
+  transcript: { speaker: "Aira" | "Caller"; text: string }[];
+};
+
+const callRecords: CallRecord[] = [
+  {
+    id: "call-1",
+    caller: "Maya Thompson",
+    initials: "MT",
+    context: "New patient · Invisalign enquiry",
+    time: "Today, 10:42 AM",
+    duration: "04:18",
+    status: "Resolved by Aira",
+    statusTone: "resolved",
+    intent: "Book consultation",
+    summary:
+      "Maya was looking for an Invisalign consultation before an upcoming trip. Aira answered pricing questions, checked availability, and secured a Thursday appointment with Dr. Patel.",
+    transcript: [
+      { speaker: "Aira", text: "Hi Maya, you’ve reached Northstar Dental Studio. How can I help today?" },
+      { speaker: "Caller", text: "I’m interested in Invisalign, but I’m travelling soon and wanted to understand how quickly I could get started." },
+      { speaker: "Aira", text: "I can help with that. Our first consultation is 45 minutes, and the earliest opening with Dr. Patel is Thursday at 3:30 PM." },
+      { speaker: "Caller", text: "That works perfectly. Is the consultation complimentary?" },
+      { speaker: "Aira", text: "Yes, the consultation is complimentary. I’ve reserved Thursday at 3:30 PM for you and sent the details by text." },
+    ],
+  },
+  {
+    id: "call-2",
+    caller: "Daniel Reed",
+    initials: "DR",
+    context: "Existing patient · Appointment change",
+    time: "Today, 9:18 AM",
+    duration: "02:41",
+    status: "Resolved by Aira",
+    statusTone: "resolved",
+    intent: "Reschedule appointment",
+    summary:
+      "Daniel needed to move a hygiene appointment by one week. Aira found a matching morning slot, confirmed the change, and updated the patient record without staff involvement.",
+    transcript: [
+      { speaker: "Aira", text: "Good morning, Daniel. I can help you move an existing appointment." },
+      { speaker: "Caller", text: "Yes please, I need to move my hygiene visit from next Tuesday." },
+      { speaker: "Aira", text: "I have Tuesday the 19th at 9:00 AM or Wednesday the 20th at 11:30 AM available." },
+      { speaker: "Caller", text: "Tuesday the 19th is ideal." },
+      { speaker: "Aira", text: "Done. Your appointment is now Tuesday the 19th at 9:00 AM. You’ll receive a confirmation shortly." },
+    ],
+  },
+  {
+    id: "call-3",
+    caller: "Leah Morgan",
+    initials: "LM",
+    context: "Existing patient · Insurance question",
+    time: "Yesterday, 4:56 PM",
+    duration: "06:07",
+    status: "Escalated to studio",
+    statusTone: "escalated",
+    intent: "Insurance coverage",
+    summary:
+      "Leah had a detailed question about a claim already in progress. Aira captured the relevant details and escalated the call to the studio manager with a complete handoff note.",
+    transcript: [
+      { speaker: "Aira", text: "Hi Leah, I can capture the details for our studio manager and make sure this reaches the right person." },
+      { speaker: "Caller", text: "My insurer rejected part of the claim and I’m not sure which code needs correcting." },
+      { speaker: "Aira", text: "I understand. I’ll note the claim reference, the treatment date, and the exact rejection message for the team." },
+      { speaker: "Caller", text: "The reference is NS-20481, and the treatment was on the 6th of this month." },
+      { speaker: "Aira", text: "Thank you. I’ve sent that through as a priority follow-up. The studio manager will call you back during opening hours." },
+    ],
+  },
 ];
 
 function MiniSparkline({ positive = true }: { positive?: boolean }) {
@@ -125,8 +208,185 @@ function SectionLabel({ children, detail }: { children: string; detail?: string 
   );
 }
 
+function CallLogsSection({
+  selectedCall,
+  onSelectCall,
+}: {
+  selectedCall: CallRecord;
+  onSelectCall: (call: CallRecord) => void;
+}) {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [transcriptExported, setTranscriptExported] = useState(false);
+
+  const handleTranscriptExport = () => {
+    setTranscriptExported(true);
+    window.setTimeout(() => setTranscriptExported(false), 2200);
+  };
+
+  return (
+    <section className="aira-rise mt-8">
+      <div className="flex flex-col justify-between gap-5 border-b border-[#202020] pb-7 md:flex-row md:items-end">
+        <div>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="h-2 w-2 rounded-full bg-[#65d7e6]" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#8c8c8c]">
+              Call intelligence · 12 this period
+            </span>
+          </div>
+          <h1 className="font-['Inter'] text-[42px] font-semibold leading-[0.98] tracking-[-0.055em] text-[#f5f5f5] sm:text-[52px]">
+            Call logs.
+          </h1>
+          <p className="mt-3 max-w-[560px] text-[13px] leading-6 text-[#969696]">
+            Review every conversation Aira handled, with the recording, a clear handoff summary, and the full transcript in one place.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="rounded-full border border-[#30466f] bg-[#121d33] px-3 py-2 font-mono text-[10px] text-[#9fc4ff]">
+            9 resolved · 3 escalated
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-7 grid gap-4 xl:grid-cols-[0.78fr_1.22fr]">
+        <article className="overflow-hidden rounded-[12px] border border-[#242424] bg-[#111111]">
+          <div className="flex items-center justify-between border-b border-[#242424] px-5 py-4">
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-[#a9a9a9]">Recent calls</p>
+              <p className="mt-1 text-[11px] text-[#6f6f6f]">Select a call to open its intelligence record.</p>
+            </div>
+            <span className="rounded-full bg-[#1a2941] px-2 py-1 font-mono text-[9px] text-[#9fc4ff]">Live</span>
+          </div>
+          <div className="divide-y divide-[#242424]">
+            {callRecords.map((call) => {
+              const selected = call.id === selectedCall.id;
+              return (
+                <button
+                  key={call.id}
+                  type="button"
+                  onClick={() => {
+                    onSelectCall(call);
+                    setIsPlaying(false);
+                  }}
+                  className={`flex w-full items-start gap-3 px-5 py-4 text-left transition-colors ${
+                    selected ? "bg-[#162440]" : "hover:bg-[#171717]"
+                  }`}
+                  aria-current={selected ? "true" : undefined}
+                >
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-[10px] ${selected ? "bg-[#8fb7ff] text-[#050505]" : "bg-[#242b3b] text-[#9fc4ff]"}`}>
+                    {call.initials}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="truncate text-[12px] font-medium text-[#e3e3e3]">{call.caller}</span>
+                      <span className="shrink-0 font-mono text-[9px] text-[#727272]">{call.time.split(", ")[1]}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-[11px] text-[#858585]">{call.context}</span>
+                    <span className="mt-2 flex items-center gap-2">
+                      <span className={`h-1.5 w-1.5 rounded-full ${call.statusTone === "resolved" ? "bg-[#65d7e6]" : "bg-[#b7a8ff]"}`} />
+                      <span className={`font-mono text-[9px] ${call.statusTone === "resolved" ? "text-[#9fc4ff]" : "text-[#b7a8ff]"}`}>{call.status}</span>
+                      <span className="ml-auto font-mono text-[9px] text-[#686868]">{call.duration}</span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="border-t border-[#242424] px-5 py-4">
+            <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#666666]">Showing latest 3 records · 12 total this period</p>
+          </div>
+        </article>
+
+        <article className="rounded-[12px] border border-[#242424] bg-[#111111] p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 border-b border-[#2b2b2b] pb-5 sm:flex-row sm:items-start">
+            <div className="flex items-start gap-3">
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1a2941] font-mono text-[11px] text-[#9fc4ff]">{selectedCall.initials}</div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="font-['Inter'] text-[20px] font-semibold tracking-[-0.04em] text-[#f5f5f5]">{selectedCall.caller}</h2>
+                  <span className={`rounded-full px-2 py-1 font-mono text-[9px] ${selectedCall.statusTone === "resolved" ? "bg-[#122036] text-[#9fc4ff]" : "bg-[#1e1a26] text-[#b7a8ff]"}`}>
+                    {selectedCall.status}
+                  </span>
+                </div>
+                <p className="mt-1 text-[11px] text-[#818181]">{selectedCall.context} · {selectedCall.time}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleTranscriptExport}
+              className="flex items-center justify-center gap-2 rounded-full border border-[#303030] px-3 py-2 text-[10px] font-medium text-[#bcbcbc] transition-colors hover:border-[#777777] hover:text-[#f5f5f5]"
+            >
+              {transcriptExported ? <Check size={13} /> : <Download size={13} />}
+              {transcriptExported ? "Transcript saved" : "Export transcript"}
+            </button>
+          </div>
+
+          <div className="mt-5 rounded-[10px] border border-[#30466f] bg-[#0f1a2e] p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[#9fc4ff]">Call recording</p>
+                <p className="mt-1 text-[11px] text-[#9eabbf]">Aira call · {selectedCall.duration}</p>
+              </div>
+              <div className="flex items-center gap-1 text-[#74849f]">
+                <PhoneCall size={14} />
+                <span className="font-mono text-[9px]">Studio line</span>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center gap-3">
+              <button type="button" onClick={() => setIsPlaying(false)} aria-label="Rewind recording" className="grid h-8 w-8 place-items-center rounded-full text-[#9eabbf] hover:bg-[#1b2a44] hover:text-[#f5f5f5]"><SkipBack size={14} /></button>
+              <button type="button" onClick={() => setIsPlaying((playing) => !playing)} aria-label={isPlaying ? "Pause recording" : "Play recording"} className="grid h-10 w-10 place-items-center rounded-full bg-[#f5f5f5] text-[#050505] transition-colors hover:bg-[#d9d9d9]">
+                {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" className="ml-0.5" />}
+              </button>
+              <button type="button" onClick={() => setIsPlaying(false)} aria-label="Fast forward recording" className="grid h-8 w-8 place-items-center rounded-full text-[#9eabbf] hover:bg-[#1b2a44] hover:text-[#f5f5f5]"><SkipForward size={14} /></button>
+              <div className="min-w-0 flex-1">
+                <div className="h-1.5 overflow-hidden rounded-full bg-[#263956]">
+                  <div className={`h-full rounded-full bg-[#8fb7ff] transition-all duration-500 ${isPlaying ? "w-[44%]" : "w-[16%]"}`} />
+                </div>
+                <div className="mt-2 flex justify-between font-mono text-[9px] text-[#71809a]"><span>{isPlaying ? "01:53" : "00:41"}</span><span>{selectedCall.duration}</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-[0.82fr_1.18fr]">
+            <div>
+              <SectionLabel detail={selectedCall.intent}>Aira summary</SectionLabel>
+              <p className="text-[12px] leading-6 text-[#a9a9a9]">{selectedCall.summary}</p>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <div className="rounded-[8px] border border-[#242424] bg-[#0d0d0d] p-3">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#777777]">Outcome</p>
+                  <p className="mt-1.5 text-[12px] text-[#e3e3e3]">{selectedCall.statusTone === "resolved" ? "Appointment secured" : "Human follow-up"}</p>
+                </div>
+                <div className="rounded-[8px] border border-[#242424] bg-[#0d0d0d] p-3">
+                  <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#777777]">Sentiment</p>
+                  <p className="mt-1.5 text-[12px] text-[#9fc4ff]">{selectedCall.statusTone === "resolved" ? "Positive" : "Needs care"}</p>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-[#2b2b2b] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+              <SectionLabel detail="Speaker-labeled">Transcript</SectionLabel>
+              <div className="max-h-[300px] space-y-4 overflow-y-auto pr-2">
+                {selectedCall.transcript.map((line, index) => (
+                  <div key={`${selectedCall.id}-${index}`} className="flex items-start gap-3">
+                    <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full font-mono text-[8px] ${line.speaker === "Aira" ? "bg-[#1a2941] text-[#9fc4ff]" : "bg-[#242424] text-[#a4a4a4]"}`}>
+                      {line.speaker === "Aira" ? "A" : selectedCall.initials[0]}
+                    </span>
+                    <div>
+                      <p className="font-mono text-[9px] uppercase tracking-[0.12em] text-[#777777]">{line.speaker}</p>
+                      <p className="mt-1 text-[11px] leading-5 text-[#a7a7a7]">{line.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
 function Dashboard() {
   const [activeNav, setActiveNav] = useState("Overview");
+  const [selectedCall, setSelectedCall] = useState(callRecords[0]);
   const [range, setRange] = useState<RangeKey>("last-30");
   const [rangeOpen, setRangeOpen] = useState(false);
   const [exported, setExported] = useState(false);
@@ -290,6 +550,8 @@ function Dashboard() {
           </header>
 
           <div className="mx-auto max-w-[1320px] px-5 pb-14 pt-8 sm:px-8 lg:px-10">
+             {activeNav !== "Call logs" && (
+               <>
              <div className="aira-rise flex flex-col justify-between gap-6 border-b border-[#202020] pb-7 md:flex-row md:items-end">
               <div>
                 <div className="mb-3 flex items-center gap-2">
@@ -297,7 +559,7 @@ function Dashboard() {
                    <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[#8c8c8c]">
                     Studio pulse · live
                   </span>
-                </div>
+             </div>
                  <h1 className="font-['Inter'] text-[42px] font-semibold leading-[0.98] tracking-[-0.055em] text-[#f5f5f5] sm:text-[52px]">
                   Good morning, Julia.
                 </h1>
@@ -346,8 +608,10 @@ function Dashboard() {
                 </button>
               </div>
             </div>
+               </>
+             )}
 
-            {activeNav !== "Overview" && (
+             {activeNav !== "Overview" && activeNav !== "Call logs" && (
                  <div className="aira-rise mt-6 flex items-center gap-3 border border-[#30466f] bg-[#121d33] px-4 py-3 text-[12px] text-[#a7c2ff]">
                 <Sparkles size={15} />
                 <span>
@@ -359,7 +623,11 @@ function Dashboard() {
               </div>
             )}
 
-            <section className="aira-rise aira-rise-1 mt-8">
+             {activeNav === "Call logs" ? (
+               <CallLogsSection selectedCall={selectedCall} onSelectCall={setSelectedCall} />
+             ) : (
+               <>
+             <section className="aira-rise aira-rise-1 mt-8">
               <SectionLabel detail={`Compared with previous ${range === "this-year" ? "year" : "period"}`}>
                 Business at a glance
               </SectionLabel>
@@ -561,6 +829,8 @@ function Dashboard() {
                 {summaryRequested ? "One-sheet requested — we’ll email it shortly" : "Ask Aira for this week’s one-sheet"}
               </button>
             </footer>
+               </>
+             )}
           </div>
         </main>
       </div>
